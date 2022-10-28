@@ -1,5 +1,5 @@
 <p align="center">
-  <img align='center' src="https://giphy.com/embed/UO5elnTqo4vSg" width="190">
+  <img align='center' src="https://giphy.com/embed/Dh5q0sShxgp13DwrvG.gif" width="190">
     <h3 align="center"> Repositório dedicado a Raspagem de dados da ALMG  </h3>
     </p>
 
@@ -8,7 +8,6 @@
     <br />
     </p>
 </p>
-
 
 
 <!-- TABLE OF CONTENTS -->
