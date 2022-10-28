@@ -1,5 +1,5 @@
 <p align="center">
-  <img align='center' src="https://giphy.com/gifs/PLCnext-plcnext-phoenixcontact-plcnexttechnology-fwbZnTftCXVocKzfxR" width="190">
+  <img align='center' src="https://media.giphy.com/media/JmBXdjfIblJDi/giphy.gif" width="190">
     <h3 align="center"> Repositório dedicado a Raspagem de dados da ALMG  </h3>
     </p>
 
@@ -19,7 +19,10 @@
 <br />
 
 
-Resumo.
+<p align="center">
+  <img align='center' src="https://media.giphy.com/media/fwbZnTftCXVocKzfxR/giphy.gif" width="190">
+    <h3 align="center"> Repositório dedicado a Raspagem de dados da ALMG  </h3>
+    </p>
 
 <br />
 
