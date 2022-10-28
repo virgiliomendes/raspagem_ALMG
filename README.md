@@ -26,8 +26,6 @@ Resumo.
 
 #### Contato :mailbox_with_mail: :
 
-**Rafael Oliveira**([joserafaeloliveira.cd@gmail.com](mailto:joserafaeloliveira.cd@gmail.com))
-
 <br />
 
 **Virgílio Mendes**([virgilioebm@gmail.com](mailto:virgilioebm@gmail.com))
