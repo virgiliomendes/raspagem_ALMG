@@ -56,4 +56,4 @@
 
 
 [![Generic badge](https://img.shields.io/badge/Updated-Yes-<GREEN>.svg)](https://shields.io/)
-[![GitHub contributors](https://img.shields.io/github/contributors/Naereen/StrapDown.js.svg)](https://GitHub.com/Naereen/StrapDown.js/graphs/contributors/)
+[![Ask Me Anything !](https://img.shields.io/badge/Ask%20me-anything-1abc9c.svg)](https://GitHub.com/Naereen/ama)
