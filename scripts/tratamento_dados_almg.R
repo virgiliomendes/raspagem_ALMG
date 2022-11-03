@@ -1,95 +1,45 @@
 
+# ---
+#
+# Pesquisador:
+# Virgílio de Araújo Mendes
+#
+# Contato:
+# https://github.com/virgiliomendes/
+# https://virgiliomendes.github.io/
+# e-mail: virgilioebm@gmail.com
+#
+# ---
+# 03/11/2022
+# ---
 
 
-# RASPAGEM DE DADOS ALMG -------------------------------------------------------
+# Codigo para tratamento dos dados coletados da ALMG.
+# Os dados compoe no total informações sobre as proposições,
+# que incluem as tramitações (para cada tipo de proposição)
+# e as votaçoes (1 ou 2 turno) para cada projeto
 
-# apagando todos objeto da area de trabalho
+## PREAMBULO -------------------------------------------------------------------
+
+
+# Limpando nosso ambiente:
 rm(list = ls())
 
+# Se achar necessário:
+options(mc.cores = parallel::detectCores())
+gc()
+memory.size(max=F)
 
-
+# Carrega pacotes:
 library(readxl)
 library(tidyverse)
+library(janitor)
+library(questionr)
+library(data.table)
 
-# Tramitação
-
-# Banco de raspagem tem que resultar nessas informações
-
-# Linha:
-#   - Projeto
-# Coluna: 
-#   - Tempo de tramitação
-# - Aprovado ou não 
-# - Modificado ou não 
-# - Veto mantido ou derrubado
-
-
-# criando um objeto com o endereço da pagina que queremos coletar
-url <- "https://www.almg.gov.br/atividade_parlamentar/tramitacao_projetos/interna.html?a=2022&n=3827&t=PL"
-
-html <- read_html(url) # lento e colocando em um objeto o conteudo da pagia coletada
-
-pl <- html_nodes(html, xpath = '//*[@id="container"]/div[5]/h2') %>% html_text()
-
-tramitacao <- html_nodes(html, xpath = '//div[5]/div[3]') %>% html_text()
-
-tramitacaoc <- html_nodes(html, xpath = '//*[@id="js_tabTramitacao"]') %>% html_text()
-
-
-
-
-# ------------------------------------------------------------------------------
-
-# link de cada tramitação
-links <- read_excel("voto_almg_PEC.xlsx") %>% 
-  select(`link completo`) %>% 
-  mutate(id = 1:length(`link completo`))
-
-
-# cria banco vazio
-dados <- NULL
-
-
-for(val in 1:length(links$id)){
-  
-  # pegar o link quando o id for igual a `i`
-  
-  #links$id == `i`
-  url <- links %>% 
-    filter(id == val) %>% 
-    select(`link completo`)
-  
-  # tranforma em html
-  html <- read_html(url$`link completo`)
-  
-  # Posição 1
-  pl <- html_nodes(html, xpath = '//*[@id="container"]/div[5]/h2') %>% html_text()
-  geral <- html_nodes(html, xpath = '///*[@id="container"]/div[5]/div[3]') %>% html_text()
-  tramitacao <- html_nodes(html, xpath = '//*[@id="js_tabTramitacao"]') %>% html_text()
-  
-  # a outra alteração é que colocamos o vetor titulo dentro de um data.frame
-  df <- data.frame(pl, geral, tramitacao,
-                   stringsAsFactors = F)
-  
-  # aqgui estamos jutando o data.frame df com o objeto que está fora do loop
-  # o dados.
-  dados <- rbind(dados, df)
-  
-  
-  
-  print(val) # o print i no final da coleta serve para exibir do console qual pagina foi coletada com sucesso
-}
-  
-
-# Exportando dados raspados
-writexl::write_xlsx(dados, "voto_teste.xlsx")
-
-saveRDS(dados, "voto_teste.rds")
-
+options(scipen = 999)
 
 # TRATAMENTO -------------------------------------------------------------------
-
-
 
 # importa
 dados <- readRDS("voto_teste.rds")
@@ -150,32 +100,19 @@ bd$Ementa <- stringr::str_remove(bd$Ementa, "Situação Atual")
 writexl::write_xlsx(bd, "final_tramitacao(15.09.2022).xlsx")
 
 
-# 
-teste <- bd %>% 
-  rename(tramitacao1 = `Tramitação Detalhes`) %>% 
-  select(pl, tramitacao1)
-
-
-teste$datas <- str_extract_all(teste$tramitacao1, "[:digit:]{2}\\/[:digit:]{2}\\/[:digit:]{4}")
-teste$datas <- as.character(teste$datas)
-
-writexl::write_xlsx(teste, "teste(15.09.2022).xlsx")
-
-
-# contando intervalo de tramitacao
+# contando intervalo de tramitacao - numero de dias
 
 library(lubridate)
 
 bd <- readxl::read_xlsx("teste(15.09.2022).xlsx")
 
+bd$intervalo <- ymd(bd$inicio) %--% ymd(bd$final)
+
+# Número de dias
+bd$intervalo <- bd$intervalo / ddays(1)
 
 
-bd$intervalo <- ymd(bd$inicio) %--% ymd(bd$final) 
-
-bd$intervalo <- bd$intervalo / ddays(1)               # Número de dias
-
-
-## [1] 30
+# exportação
 
 writexl::write_xlsx(bd, "teste(15.09.2022).xlsx")
 
@@ -190,54 +127,9 @@ bd$votacao <- as.character(bd$votacao)
 writexl::write_xlsx(bd, "teste(15.09.2022).xlsx")
 
 
-# Split Votação ------------------------------
-
-rm(list = ls())
-
-# Carrega pacotes:
-library(readxl)
-library(tidyverse)
-library(janitor)
-library(questionr)
-library(data.table)
-
-# Importa dados:
-bd <- read_xlsx("final(10.10.2022).xlsx") %>% 
-  select(pl, tramitacao_detalhes)
-
-# Separar votacoes para cada PL:
-
-## separador "votação"
-# referencia: https://stackoverflow.com/questions/27153979/converting-nested-list-unequal-length-to-data-frame
-vetor_sep <- stringr::str_split(bd$tramitacao_detalhes, pattern = "Votação", simplify = F, n = 20)
-
-# cumputa numero de vetores nas listas
-indx <- sapply(vetor_sep, length)
-
-# separa as strings em cada coluna (com a col MAX vindo da lista) 
-bd_final <- as.data.frame(do.call(rbind,lapply(vetor_sep, `length<-`,
-                                          max(indx))))
-
-# renomeia as colunas
-colnames(bd_final) <- names(vetor_sep[[which.max(indx)]])
-
-# remove
-rm(vetor_sep, indx)
-
-# cria ID
-bd$id <- 1:length(bd$pl)
-
-bd_final$id <- 1:116
-
-# juntar bancos tratados
-bd_f <- cbind(bd, bd_final)
-
-# Exporta dados:
-writexl::write_xlsx(bd_f, "votacao-proposicao(14.10.2022).xlsx")
-
 # Fim!
 
-# Modificado ------------------------------
+# Incluindo Substitutivo e Modificado ------------------------------
 
 rm(list = ls())
 
@@ -286,7 +178,7 @@ bd = bd %>%
 # Exporta dados:
 writexl::write_xlsx(bd, "tramitacao-modificado(21.10.2022).xlsx")
 
-# Ajuste votacao ------------------------------
+# Previa votacao: Partidos ------------------------------
 
 rm(list = ls())
 
@@ -552,153 +444,7 @@ bd$PEC_55_2020_1t [str_detect(bd$PEC_55_2020_1t , pattern = bd$Deputado)] = "Sim
 bd$PEC_55_2020_2t [str_detect(bd$PEC_55_2020_2t , pattern = bd$Deputado)] = "Sim"
 
 
-# Codigo para determinar voto "Não votou"
-# bd$PL_1005_2019[str_detect(bd$PL_1005_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1006_2019[str_detect(bd$PL_1006_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1006_2019_1t[str_detect(bd$PL_1006_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1006_2019_2t[str_detect(bd$PL_1006_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1007_2019[str_detect(bd$PL_1007_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1008_2019[str_detect(bd$PL_1008_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1009_2019[str_detect(bd$PL_1009_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1009_2019_1t[str_detect(bd$PL_1009_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1010_2019[str_detect(bd$PL_1010_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1010_2019_1t[str_detect(bd$PL_1010_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1010_2019_2t[str_detect(bd$PL_1010_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1011_2019[str_detect(bd$PL_1011_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1013_2019_1t[str_detect(bd$PL_1013_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1013_2019_2t[str_detect(bd$PL_1013_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1014_2019_1t[str_detect(bd$PL_1014_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1014_2019_2t[str_detect(bd$PL_1014_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1015_2019_1t[str_detect(bd$PL_1015_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1015_2019_2t[str_detect(bd$PL_1015_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1016_2019_1t[str_detect(bd$PL_1016_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1016_2019_2t[str_detect(bd$PL_1016_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1085_2019[str_detect(bd$PL_1085_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1125_2019[str_detect(bd$PL_1125_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1126_2019[str_detect(bd$PL_1126_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1127_2019[str_detect(bd$PL_1127_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1165_2019[str_detect(bd$PL_1165_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1166_2019[str_detect(bd$PL_1166_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1167_2019[str_detect(bd$PL_1167_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1202_2019[str_detect(bd$PL_1202_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1203_2019[str_detect(bd$PL_1203_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1204_2019_1t[str_detect(bd$PL_1204_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1204_2019_2t[str_detect(bd$PL_1204_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1205_2019_1t[str_detect(bd$PL_1205_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1205_2019_2t[str_detect(bd$PL_1205_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1287_2019[str_detect(bd$PL_1287_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1355_2019_1t[str_detect(bd$PL_1355_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1355_2019_2t[str_detect(bd$PL_1355_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1440_2020[str_detect(bd$PL_1440_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1451_2020_1t[str_detect(bd$PL_1451_2020_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1451_2020_2t[str_detect(bd$PL_1451_2020_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1725_2020[str_detect(bd$PL_1725_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1726_2020[str_detect(bd$PL_1726_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1750_2020[str_detect(bd$PL_1750_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1751_2020[str_detect(bd$PL_1751_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1752_2020[str_detect(bd$PL_1752_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1938_2020[str_detect(bd$PL_1938_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_1966_2020[str_detect(bd$PL_1966_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2052_2020[str_detect(bd$PL_2052_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2136_2020[str_detect(bd$PL_2136_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2141_2020[str_detect(bd$PL_2141_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2150_2020[str_detect(bd$PL_2150_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2150_2020_1t[str_detect(bd$PL_2150_2020_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2150_2020_2t[str_detect(bd$PL_2150_2020_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2201_2020[str_detect(bd$PL_2201_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2202_2020[str_detect(bd$PL_2202_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2252_2020[str_detect(bd$PL_2252_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2273_2020[str_detect(bd$PL_2273_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2274_2020[str_detect(bd$PL_2274_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2275_2020[str_detect(bd$PL_2275_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2275_2020_1t[str_detect(bd$PL_2275_2020_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2275_2020_2t[str_detect(bd$PL_2275_2020_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2276_2020[str_detect(bd$PL_2276_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2508_2021[str_detect(bd$PL_2508_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2509_2021[str_detect(bd$PL_2509_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2657_2021[str_detect(bd$PL_2657_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2707_2021[str_detect(bd$PL_2707_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2770_2021[str_detect(bd$PL_2770_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2771_2021[str_detect(bd$PL_2771_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2884_2021[str_detect(bd$PL_2884_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2885_2021[str_detect(bd$PL_2885_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2924_2021[str_detect(bd$PL_2924_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2937_2021[str_detect(bd$PL_2937_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_2976_2021[str_detect(bd$PL_2976_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_3191_2021[str_detect(bd$PL_3191_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_3192_2021[str_detect(bd$PL_3192_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_3199_2021[str_detect(bd$PL_3199_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_3211_2021[str_detect(bd$PL_3211_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_3256_2021[str_detect(bd$PL_3256_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_3399_2021[str_detect(bd$PL_3399_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_3407_2021[str_detect(bd$PL_3407_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_3409_2021[str_detect(bd$PL_3409_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_367_2019[str_detect(bd$PL_367_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_368_2019[str_detect(bd$PL_368_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_450_2019_1t[str_detect(bd$PL_450_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_450_2019_2t[str_detect(bd$PL_450_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_451_2019[str_detect(bd$PL_451_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_452_2019[str_detect(bd$PL_452_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_734_2019[str_detect(bd$PL_734_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_872_2019[str_detect(bd$PL_872_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_873_2019_1t[str_detect(bd$PL_873_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_876_2019_1t[str_detect(bd$PL_876_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PL_877_2019[str_detect(bd$PL_877_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_10_2019_1t[str_detect(bd$PLC_10_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_10_2019_2t[str_detect(bd$PLC_10_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_28_2019_1t[str_detect(bd$PLC_28_2019_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_28_2019_2t[str_detect(bd$PLC_28_2019_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_38_2020[str_detect(bd$PLC_38_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_46_2020[str_detect(bd$PLC_46_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_46_2020_1t[str_detect(bd$PLC_46_2020_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_46_2020_2t[str_detect(bd$PLC_46_2020_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_48_2020[str_detect(bd$PLC_48_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_60_2021[str_detect(bd$PLC_60_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_60_2021_1t[str_detect(bd$PLC_60_2021_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_60_2021_2t[str_detect(bd$PLC_60_2021_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_64_2021[str_detect(bd$PLC_64_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_65_2021[str_detect(bd$PLC_65_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_75_2021[str_detect(bd$PLC_75_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_75_2021_1t[str_detect(bd$PLC_75_2021_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PLC_75_2021_2t[str_detect(bd$PLC_75_2021_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_10_2019[str_detect(bd$VET_10_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_11_2019[str_detect(bd$VET_11_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_12_2019[str_detect(bd$VET_12_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_13_2019[str_detect(bd$VET_13_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_14_2019[str_detect(bd$VET_14_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_15_2019[str_detect(bd$VET_15_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_16_2020[str_detect(bd$VET_16_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_17_2020[str_detect(bd$VET_17_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_18_2020[str_detect(bd$VET_18_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_19_2020[str_detect(bd$VET_19_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_20_2020[str_detect(bd$VET_20_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_21_2020[str_detect(bd$VET_21_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_22_2020[str_detect(bd$VET_22_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_23_2020[str_detect(bd$VET_23_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_24_2021[str_detect(bd$VET_24_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_25_2021[str_detect(bd$VET_25_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_26_2021[str_detect(bd$VET_26_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_27_2021[str_detect(bd$VET_27_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_28_2021[str_detect(bd$VET_28_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_29_2021[str_detect(bd$VET_29_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_3_2019[str_detect(bd$VET_3_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_30_2021[str_detect(bd$VET_30_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_31_2021[str_detect(bd$VET_31_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_32_2021[str_detect(bd$VET_32_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_33_2021[str_detect(bd$VET_33_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_4_2019[str_detect(bd$VET_4_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_5_2019[str_detect(bd$VET_5_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_6_2019[str_detect(bd$VET_6_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_7_2019[str_detect(bd$VET_7_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_8_2019[str_detect(bd$VET_8_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$VET_9_2019[str_detect(bd$VET_9_2019, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PEC_71_2021[str_detect(bd$PEC_71_2021, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PEC_57_2020[str_detect(bd$PEC_57_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PEC_55_2020[str_detect(bd$PEC_55_2020, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PEC_55_2020_1t[str_detect(bd$PEC_55_2020_1t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-# bd$PEC_55_2020_2t[str_detect(bd$PEC_55_2020_2t, pattern = "Sim | Contrario | Branco", negate = T)] = "Não votou"
-
-
+# Codigo para determinar voto "Não votou"/"Branco"
 
 bd <- bd %>% mutate(PL_1005_2019 = case_when(PL_1005_2019 != "Branco" & PL_1005_2019 != "Contrario" & PL_1005_2019 != "Sim" ~ "Não votou", TRUE ~ PL_1005_2019),
                     PL_1006_2019 = case_when(PL_1006_2019 != "Branco" & PL_1006_2019 != "Contrario" & PL_1006_2019 != "Sim" ~ "Não votou", TRUE ~ PL_1006_2019),
@@ -848,14 +594,22 @@ bd <- bd %>% mutate(PL_1005_2019 = case_when(PL_1005_2019 != "Branco" & PL_1005_
 
 
 
-# Teste:
+# Teste da classificação
 map(bd, freq)
 
 
-# Exporta dados:
+# Exporta dados
 writexl::write_xlsx(bd, "votacao.completa(03.11.2022).xlsx")
 
+# Exporta: formato SPSS ---------
+library(haven)
 
+bd <- readxl::read_xlsx("entrega final/banco.tramitacao.final(24.10.2022).xlsx")
+
+haven::write_sav(bd, "banco.tramitacao.final(03.11.2022).sav")
+
+bd1 <- readxl::read_xlsx("entrega final/votacao.nomes(30.10.2022).xlsx", sheet = 1)
+write_sav(bd1, "votacao.completa(03.11.2022).sav")
 
 
 

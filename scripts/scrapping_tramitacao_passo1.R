@@ -1,16 +1,50 @@
+
+
+# ---
+#
+# Pesquisador:
+# Virgílio de Araújo Mendes
+#
+# Contato:
+# https://github.com/virgiliomendes/
+# https://virgiliomendes.github.io/
+# e-mail: virgilioebm@gmail.com
+#
+# ---
+# 03/11/2022
+# ---
+
+
+# Codigo para raspagem de dados primariamente 
+# para coletar todas as proposições dado o recorte de 
+# tempo desejado (no caso foi de 2018 ate 2020).
+# As informações coletadas constam as proposicoes e 
+# os links de cada uma para uma proxima raspagem de dados.
+
+## PREAMBULO -------------------------------------------------------------------
+
+
+# Limpando nosso ambiente:
+rm(list = ls())
+
+# Se achar necessário:
+options(mc.cores = parallel::detectCores())
+gc()
+memory.size(max=F)
+
+# Carrega pacotes:
+library(rvest)
+library(stringr)
+
+options(scipen = 999)
+
+
 # web scraping
 
 # http://electionsbr.com/livro/web-scraping.html
 # https://www.ibpad.com.br/blog/comunicacao-digital/webscraping-ou-como-raspar-todas-receitas-de-bolo-de-cenoura/
 # https://bookdown.org/davi_moreira/txt4cs/scrape.html
 
-
-# apagando todos objeto da area de trabalho
-rm(list = ls())
-
-# chamando o pacote 
-library(rvest) # para coleta do conteudo html da pasta
-library(stringr) # para manipular textos
 
 # criando um objeto com o endereço da pagina que queremos coletat
 url <- "https://www.almg.gov.br/atividade_parlamentar/tramitacao_projetos/index.html?txtAssunto=&txtAutor=&txtIdProj=&txtAno=&sltGrupoTipo=6&txtEmTram=&txtTramEnc=&txtPeriodoDe=01/01/2019&txtPeriodoAte=05/07/2022&sltSituacao=&txtTramitacao=&txtTh=&search=&ordem=0&advanced=simples&tp=10&txtPalavras=&first=false&aba=js_tabpesquisaAvancada&sltSituacaoGeral=&run=1&pagina=1"
