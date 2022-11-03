@@ -1,0 +1,62 @@
+
+
+Passo a passo da raspagem de dados à formulação do banco de dados de Tramitação e Votação das Proposições da ALMG:
+
+Raspagem de dados em 2 fases:
+1.1 Primeiro foi criado um código para identificar os projetos e proposições de interesse da pesquisa direto do site da ALMG. No caso foi de 2018 ate 2021, para todos os tipos indicados a seguir: PL, PEC, Veto, PLC.
+
+1.2 As informações coletadas constam as proposicoes e os links de cada uma para uma proxima raspagem de dados como é mostrado a seguir:
+	- Identificação da proposição. Ex: "PLC 76 2022".
+	- Link. Ex: "https://www.almg.gov.br/atividade_parlamentar/tramitacao_projetos/interna.html?a=2022&n=76&t=PLC".
+	- Resumo. Ex: "Assegura o direito ao adicional noturno aos policiais penais e aos agentes socioeducativos".
+	- Tipo de projeto. Ex: "Tipo: PROJETO DE LEI COMPLEMENTAR".
+	- Autor da proposição. Ex: "Autor(es): Deputado Cleitinho Azevedo - CIDADANIA".
+	- Status da tramitação. Ex: "Situação: Aguardando parecer em comissão".
+
+* Observação: Há algumas proposições que ainda não tiveram votações realizadas.
+
+1.3 As informações foram exportadas em um banco de dados prévio para a coleta da segunda parte dos dados direto da página de cada proposição.
+
+2.1 Após a coleta dos dados principais que identificam quais informações e proposições serão usadas, foi realizado outra raspagem de dados a partir dos links coletados e salvos no passo anterior.
+
+2.2 Neste passo foi elaborado um codigo para raspagem de dados das informações referentes a tramitacao das proposicoes de cada  projeto na ALMG. Nela foram coletadas as informações dos seguintes campos que compõe o banco de dados de tramitação:
+
+- Autor. Ex: "Deputado Gustavo Valadares PMN".
+- Ementa. Ex: "Dispõe sobre a desafetação dos trechos de rodovia que especifica e autoriza o Poder Executivo a doar as áreas correspondentes ao Município de Coluna. (Destinação: instalação de via urbana.)".
+- Situação atual. Ex: "Aguardando parecer em comissão".
+- Local. Ex: "Comissão de Constituição e Justiça".
+- Regime de Tramitação. Ex: "Deliberação em dois turnos no Plenário".
+- Tramitação Detalhes. Ex: "Todas as informações publicadas desde o início do processo, o que inclui as votações que alimentarão o segundo banco de dados".
+
+2.3 As informações foram exportadas em um banco de dados que alimentará os próximos bancos que estão incluídos na entrega.
+
+3.1 Os próximos passos irão trabalhar os bancos criados para a formulação das entregas. Neste primeiro são selecionados das informações mais importantes para a criação do banco de dados de tramitação dos projetos, onde a unidade de análise é cada uma das proposições coletadas.
+
+3.2 É feito uma junção das variáveis de interesse relacionadas às tramitações do projeto bem como o tratamento de dados para ajuste das variáveis para que fique inteligível e passíveis de serem usadas, como: pl, tipo, link_completo, resumo, autor, status, geral, ementa, situacao, local, tramitacao_plenario, tramitacao_detalhes.
+
+3.3 É criada variáveis de interesse que fomentarão os resultados da pesquisa, como: modificado, substitutivo, emenda1t, emenda2t, tempo_tramitacao_dias, tempo_inicio, tempo_final.
+
+3.4 O banco de dados de tramitação é concluído e exportado.
+
+4.1 Com o primeiro banco finalizado, agora é trabalhado as votações de cada proposição, sendo que cada projeto pode ter mais de uma votação.
+
+4.2 Neste banco de votações, agora a unidade de análise é como cada Deputado Estadual em exercício votou. Assim, temos nas linhas os deputados e nas colunas as proposições. Como cada proposição pode conter mais de uma votação (final, 1 turno ou 2 turno), as colunas foram subdivididas a partir da quantidade de votações para cada proposição sendo informado se é uma votação final, do primeiro turno ou segundo.
+
+4.3 Tendo a estrutura do banco de dados criado, nas linhas os deputados e nas colunas a indicação de qual votação é aquela, agora foi realizado a identificação de como cada deputado votou, sendo possível assumir os seguintes valores: "Branco", "Não votou, "Contrário" ou "Sim".
+
+4.4 Com o banco classificado, é realizado a exportação do banco de votações.
+
+5.1 Como os resultados serão processados e elaborados no software SPSS, foram exportados os dois bancos finais para a extensão de suporte do programa SPSS, (formato ".sav").
+
+5.2 Os códigos de processamento e raspagem de dados e os bancos formulados estão disponíveis no repositório: https://github.com/virgiliomendes/raspagem_ALMG
+
+
+
+
+
+
+
+
+
+
+
